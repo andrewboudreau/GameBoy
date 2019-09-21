@@ -2,7 +2,7 @@
 
 namespace GameBoy
 {
-	/*
+    /*
         d8  means immediate 8 bit data
         d16 means immediate 16 bit data
         a8  means 8 bit unsigned data, which are added to $FF00 in certain instructions (replacement for missing IN and OUT instructions)
@@ -32,177 +32,235 @@ namespace GameBoy
         Z	Zero Flag.
      */
 
-	public partial class Z80A
-	{
-		public Registers Registers = new Registers();
-		public Clock Clock = new Clock();
-		public Mmu Mmu = new Mmu();
+    public partial class Z80A
+    {
+        public Registers Registers = new Registers();
+        public Clock Clock = new Clock();
+        public Mmu Mmu = new Mmu();
 
-		public Z80A()
-		{
-			BootRom.Bytes.CopyTo(Mmu.Memory, 0);
+        public Z80A()
+        {
+            BootRom.Bytes.CopyTo(Mmu.Memory, 0);
 
-			for (var i = 0; i < 16 * 16; i++)
-			{
-				Op[i] = NotImplemented;
-				CB[i] = NotImplemented;
-			}
+            for (var i = 0; i < 16 * 16; i++)
+            {
+                Op[i] = NotImplemented;
+                CB[i] = NotImplemented;
+            }
 
-			Op[0x00] = NOP;
-			Op[0x02] = LDBCmA;
-			Op[0xCB] = () => PerfixCB();
-			Op[0x01] = () => Registers.BC = LDd16("BC");
-			Op[0x11] = () => Registers.DE = LDd16("DE");
-			Op[0x21] = () => Registers.HL = LDd16("HL");
-			Op[0x31] = () => Registers.SP = LDd16("SP");
+            Op[0x00] = NOP;
+            Op[0x02] = LDBCmA;
+            Op[0xCB] = () => PerfixCB();
+            Op[0x01] = () => Registers.BC = LDd16("BC");
+            Op[0x11] = () => Registers.DE = LDd16("DE");
+            Op[0x21] = () => Registers.HL = LDd16("HL");
+            Op[0x31] = () => Registers.SP = LDd16("SP");
 
-			// JR cc,n
-			Op[0x20] = () => { JRccnn(!Registers.FZ, Mmu.ReadByte(Registers.PC + 1)); };
-			Op[0x28] = () => { JRccnn(Registers.FZ, Mmu.ReadByte(Registers.PC + 1)); };
-			Op[0x30] = () => { JRccnn(Registers.FC, Mmu.ReadByte(Registers.PC + 1)); };
-			Op[0x38] = () => { JRccnn(!Registers.FZ, Mmu.ReadByte(Registers.PC + 1)); };
+            Op[0x0E] = () => Registers.C = LDd8("C");
+            Op[0x1A] = () =>
+            {
+                // LD A,(DE)
+                Console.WriteLine($"LD A, (DE)#{Registers.DE}");
+                Registers.A = Mmu.ReadByte(Registers.DE);
+                Registers.PC += 2;
+                Registers.M += 2;
+            };
 
-			// LD A, (HL)
-			Op[0x32] = () =>
-			{
-				Console.WriteLine("LD A, (HL)");
-				Registers.A = Mmu.ReadByte(Registers.HL);
-				Registers.PC += 1;
-				Registers.M += 3;
-			};
+            Op[0x3E] = () => Registers.A = LDd8("A");
 
-			Op[0xA8] = () => XOR_A(Registers.B, "B");
-			Op[0xA9] = () => XOR_A(Registers.C, "C");
-			Op[0xAA] = () => XOR_A(Registers.D, "D");
-			Op[0xAB] = () => XOR_A(Registers.E, "E");
-			Op[0xAC] = () => XOR_A(Registers.H, "H");
-			Op[0xAD] = () => XOR_A(Registers.L, "L");
-			Op[0xAE] = () => XOR_A(Mmu.ReadByte(Registers.HL), "(HL)");
-			Op[0xAF] = () => XOR_A(Registers.A, "A");
+            //LD (C),A
+            Op[0xE2] = () =>
+            {
+                Console.WriteLine($"LD (C), A#{Registers.A}");
+                Mmu.WriteByte(Registers.C, Registers.A);
+                Registers.PC += 2;
+                Registers.M += 2;
+            };
 
-			CB[0x7c] = () => BIT_br(7, Registers.H);
-		}
 
-		private void PerfixCB()
-		{
-			CB[Mmu.ReadByte(Registers.PC + 1)]();
-			Registers.PC += 2;
-			Registers.M += 2;
-		}
+            // JR cc,n
+            Op[0x20] = () => { JRccnn(!Registers.FZ, Mmu.ReadByte(Registers.PC + 1)); };
+            Op[0x28] = () => { JRccnn(Registers.FZ, Mmu.ReadByte(Registers.PC + 1)); };
+            Op[0x30] = () => { JRccnn(Registers.FC, Mmu.ReadByte(Registers.PC + 1)); };
+            Op[0x38] = () => { JRccnn(!Registers.FZ, Mmu.ReadByte(Registers.PC + 1)); };
 
-		public readonly Action[] Op = new Action[256];
-		public readonly Action[] CB = new Action[256];
+            // LD (HL-),A
+            Op[0x32] = () =>
+            {
+                Console.WriteLine($"LD (HL-), A(${Registers.A:X2})");
+                Mmu.WriteByte(Registers.HL, Registers.A - 1);
+                Registers.PC += 1;
+                Registers.M += 2;
+            };
 
-		void NotImplemented()
-		{
-			var ops = Mmu.Read(new Range(Registers.PC, Registers.PC + 3));
+            //LD (HL),A
+            Op[0x77] = () =>
+            {
+                Console.WriteLine($"LD (HL), A#{Registers.A}");
+                Mmu.WriteByte(Registers.HL, Registers.A);
+                Registers.PC += 1;
+                Registers.M += 2;
+            };
 
-			var debug = string.Empty;
-			for (var i = 0; i < ops.Length; i++)
-			{
-				debug += $"{ops[i]:X2} ";
-			}
 
-			throw new NotImplementedException($"{debug} PC={Registers.PC:X4}");
-		}
 
-		internal void Step()
-		{
-			var op = Mmu.ReadByte(Registers.PC);
-			Op[op]();
-		}
+            Op[0xA8] = () => XOR_A(Registers.B, "B");
+            Op[0xA9] = () => XOR_A(Registers.C, "C");
+            Op[0xAA] = () => XOR_A(Registers.D, "D");
+            Op[0xAB] = () => XOR_A(Registers.E, "E");
+            Op[0xAC] = () => XOR_A(Registers.H, "H");
+            Op[0xAD] = () => XOR_A(Registers.L, "L");
+            Op[0xAE] = () => XOR_A(Mmu.ReadByte(Registers.HL), "(HL)");
+            Op[0xAF] = () => XOR_A(Registers.A, "A");
 
-		void NOP()
-		{
-			Console.WriteLine("NOP");
-			Registers.PC++;
-			Registers.M += 1;
-		}
+            //LDH (a8),A
+            Op[0xE0] = () =>
+            {
+                Console.WriteLine("LDH (a8), A");
+                Registers.PC += 2;
+                Registers.M += 3;
+            };
 
-		ushort LDd16(string name)
-		{
-			var data = Mmu.ReadWord(Registers.PC + 1);
-			Console.WriteLine($"LD {name}, d16(${data:X2})");
+            CB[0x7c] = () => BIT_br(7, Registers.H, "H");
+        }
 
-			Registers.PC += 3;
-			Registers.M += 3;
-			return data;
-		}
+        private void PerfixCB()
+        {
+            CB[Mmu.ReadByte(Registers.PC + 1)]();
+            Registers.PC += 2;
+            Registers.M += 2;
+        }
 
-		void XOR_A(byte input, string name)
-		{
-			Console.WriteLine($"XOR {name}, ${input:X2}");
+        public readonly Action[] Op = new Action[256];
+        public readonly Action[] CB = new Action[256];
 
-			Registers.A ^= input;
-			Registers.PC += 1;
-			Registers.M += 1;
-			Registers.FZ = Registers.A == 0;
-		}
+        void NotImplemented()
+        {
+            var ops = Mmu.Read(new Range(Registers.PC, Registers.PC + 3));
 
-		void LDBCmA()
-		{
-			Registers.B = Mmu.ReadByte((ushort)(Registers.PC + 1));
-			Registers.C = Mmu.ReadByte((ushort)(Registers.PC + 2));
-			Registers.M += 3;
-		}
+            var debug = string.Empty;
+            for (var i = 0; i < ops.Length; i++)
+            {
+                debug += $"{ops[i]:X2} ";
+            }
 
-		public void JRccnn(bool value, byte nn)
-		{
-			Console.WriteLine($"JR cc({value.ToString()}) nn{nn}");
+            throw new NotImplementedException($"{debug} PC={Registers.PC:X4}");
+        }
 
-			if (value)
-			{
-				Registers.PC += nn;
-				Registers.M += 1;
-			}
-			else
-			{
-				Registers.PC += 2;
-			}
+        internal void Step()
+        {
+            var op = Mmu.ReadByte(Registers.PC);
+            Console.Write($"{Registers.PC:X4}\t");
+            Console.Write($"{Mmu.ReadByte(Registers.PC):X2} [{Mmu.ReadByte(Registers.PC+1):X2} {Mmu.ReadByte(Registers.PC+2):X2}] \t");
+            Op[op]();
+        }
 
-			Registers.M += 2;
-		}
+        void NOP()
+        {
+            Console.WriteLine("NOP");
+            Registers.PC++;
+            Registers.M += 1;
+        }
 
-		public void BIT_br(byte bit, byte value)
-		{
-			if (bit < 0 || bit > 7)
-			{
-				throw new ArgumentOutOfRangeException("Bit to test must be between 0-7");
-			}
+        byte LDd8(string name)
+        {
+            //LD C,d8
+            //2  82  8
+            var data = Mmu.ReadByte(Registers.PC + 1);
+            Console.WriteLine($"LD {name}, d8(${data:X1})");
 
-			var result = value & (1 << bit);
-			Registers.FZ = result == 0;
-			Registers.FN = false;
-			Registers.FH = true;
-			Registers.M += 4;
-		}
+            Registers.PC += 2;
+            Registers.M += 2;
+            return data;
+        }
 
-		public void BIT_b_addr(byte bit, byte value)
-		{
-			BIT_br(bit, value);
-			Registers.M += 4;
-		}
 
-		public byte SET_br(byte bit, byte value)
-		{
-			if (bit < 0 || bit > 7)
-			{
-				throw new ArgumentOutOfRangeException("Bit to test must be between 0-7");
-			}
+        ushort LDd16(string name)
+        {
+            var data = Mmu.ReadWord(Registers.PC + 1);
+            Console.WriteLine($"LD {name}, d16(${data:X2})");
 
-			Registers.M += 4;
-			return (byte)(value | (1 << bit));
-		}
+            Registers.PC += 3;
+            Registers.M += 3;
+            return data;
+        }
 
-		public void SET_b_addr(byte bit, byte value)
-		{
-			SET_br(bit, value);
-			Registers.M += 4;
-		}
-	}
+        void XOR_A(byte input, string name)
+        {
+            Console.WriteLine($"XOR {name}, ${input:X2}");
 
-	public struct Clock
-	{
-		uint M { get; set; }
-	}
+            Registers.A ^= input;
+            Registers.PC += 1;
+            Registers.M += 1;
+            Registers.FZ = Registers.A == 0;
+        }
+
+        void LDBCmA()
+        {
+            Registers.B = Mmu.ReadByte((ushort)(Registers.PC + 1));
+            Registers.C = Mmu.ReadByte((ushort)(Registers.PC + 2));
+            Registers.M += 3;
+        }
+
+        public void JRccnn(bool value, byte nn)
+        {
+            Console.WriteLine($"JR cc({value.ToString()}) nn{nn}");
+
+            if (value)
+            {
+                Registers.PC += nn;
+                Registers.M += 1;
+            }
+            else
+            {
+                Registers.PC += 2;
+            }
+
+            Registers.M += 2;
+        }
+
+        public void BIT_br(byte bit, byte value, string name)
+        {
+            if (bit < 0 || bit > 7)
+            {
+                throw new ArgumentOutOfRangeException("Bit to test must be between 0-7");
+            }
+
+            Console.WriteLine($"BIT {bit}, {name}");
+            var result = value & (1 << bit);
+            Registers.FZ = result == 0;
+            Registers.FN = false;
+            Registers.FH = true;
+            Registers.M += 4;
+        }
+
+        public void BIT_b_addr(byte bit, byte value)
+        {
+            throw new NotImplementedException("figure out how to render addr correctly.");
+            BIT_br(bit, value, "addr");
+            Registers.M += 4;
+        }
+
+        public byte SET_br(byte bit, byte value)
+        {
+            if (bit < 0 || bit > 7)
+            {
+                throw new ArgumentOutOfRangeException("Bit to test must be between 0-7");
+            }
+
+            Registers.M += 4;
+            return (byte)(value | (1 << bit));
+        }
+
+        public void SET_b_addr(byte bit, byte value)
+        {
+            SET_br(bit, value);
+            Registers.M += 4;
+        }
+    }
+
+    public struct Clock
+    {
+        uint M { get; set; }
+    }
 }
