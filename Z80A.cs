@@ -1,4 +1,5 @@
-﻿using System;
+﻿using AndrewsWorld;
+using System;
 
 namespace GameBoy
 {
@@ -59,10 +60,10 @@ namespace GameBoy
             Op[0x0E] = () => Registers.C = LDd8("C");
             Op[0x1A] = () =>
             {
-                // LD A,(DE)
-                Console.WriteLine($"LD A, (DE)#{Registers.DE}");
+                // LD A, (DE)
+                Program.LogLine($"LD A, (DE) #{Registers.DE:X2} {Registers.DE}");
                 Registers.A = Mmu.ReadByte(Registers.DE);
-                Registers.PC += 2;
+                Registers.PC += 1;
                 Registers.M += 2;
             };
 
@@ -71,7 +72,7 @@ namespace GameBoy
             //LD (C),A
             Op[0xE2] = () =>
             {
-                Console.WriteLine($"LD (C), A#{Registers.A}");
+                Program.LogLine($"LD (C), A#{Registers.A}");
                 Mmu.WriteByte(Registers.C, Registers.A);
                 Registers.PC += 2;
                 Registers.M += 2;
@@ -79,30 +80,49 @@ namespace GameBoy
 
 
             // JR cc,n
-            Op[0x20] = () => { JRccnn(!Registers.FZ, Mmu.ReadByte(Registers.PC + 1)); };
-            Op[0x28] = () => { JRccnn(Registers.FZ, Mmu.ReadByte(Registers.PC + 1)); };
-            Op[0x30] = () => { JRccnn(Registers.FC, Mmu.ReadByte(Registers.PC + 1)); };
-            Op[0x38] = () => { JRccnn(!Registers.FZ, Mmu.ReadByte(Registers.PC + 1)); };
+            Op[0x20] = () => { JRccnn(!Registers.FZ, "NZ", Mmu.ReadByte(Registers.PC + 1)); };
+            Op[0x28] = () => { JRccnn(Registers.FZ, "Z", Mmu.ReadByte(Registers.PC + 1)); };
+            Op[0x30] = () => { JRccnn(Registers.FC, "NC", Mmu.ReadByte(Registers.PC + 1)); };
+            Op[0x38] = () => { JRccnn(!Registers.FC, "C", Mmu.ReadByte(Registers.PC + 1)); };
 
             // LD (HL-),A
             Op[0x32] = () =>
             {
-                Console.WriteLine($"LD (HL-), A(${Registers.A:X2})");
-                Mmu.WriteByte(Registers.HL, Registers.A - 1);
+                Program.LogLine($"LD (HL-), A #{Registers.A:X2}");
+                Mmu.WriteByte(Registers.HL, Registers.A);
+                Registers.HL -= 1;
                 Registers.PC += 1;
                 Registers.M += 2;
+            };
+
+            Op[0x4F] = () =>
+            {
+                Program.LogLine($"LD C, A #{Registers.A:X2} {Registers.A:}");
+                NotImplemented();
+                //LD C, A
+                //1  4
+
             };
 
             //LD (HL),A
             Op[0x77] = () =>
             {
-                Console.WriteLine($"LD (HL), A#{Registers.A}");
+                Program.LogLine($"LD (HL), A #{Registers.A:X2}, d{Registers.A}");
                 Mmu.WriteByte(Registers.HL, Registers.A);
                 Registers.PC += 1;
                 Registers.M += 2;
             };
 
+            Op[0x95] = () =>
+            {
+                NotImplemented();
+                //SUB L
+                //1  4
+                //Z 1 H C
 
+                Registers.PC += 1;
+                Registers.M += 1;
+            };
 
             Op[0xA8] = () => XOR_A(Registers.B, "B");
             Op[0xA9] = () => XOR_A(Registers.C, "C");
@@ -113,10 +133,21 @@ namespace GameBoy
             Op[0xAE] = () => XOR_A(Mmu.ReadByte(Registers.HL), "(HL)");
             Op[0xAF] = () => XOR_A(Registers.A, "A");
 
+            Op[0xCD] = () =>
+            {
+                //CALL a16
+                Program.LogLine($"CALL #{Mmu.ReadWord(Registers.PC + 1):X4} push({Registers.PC + 3:X4})");
+
+                Registers.SP -= 2;
+                Mmu.WriteWord(Registers.SP, Registers.PC + 3);
+                Registers.PC = Mmu.ReadWord(Registers.PC + 1);
+                Registers.M += 24 / 4;
+            };
+
             //LDH (a8),A
             Op[0xE0] = () =>
             {
-                Console.WriteLine("LDH (a8), A");
+                Program.LogLine("LDH (a8), A");
                 Registers.PC += 2;
                 Registers.M += 3;
             };
@@ -145,19 +176,20 @@ namespace GameBoy
             }
 
             throw new NotImplementedException($"{debug} PC={Registers.PC:X4}");
+
         }
 
         internal void Step()
         {
             var op = Mmu.ReadByte(Registers.PC);
-            Console.Write($"{Registers.PC:X4}\t");
-            Console.Write($"{Mmu.ReadByte(Registers.PC):X2} [{Mmu.ReadByte(Registers.PC+1):X2} {Mmu.ReadByte(Registers.PC+2):X2}] \t");
+            Program.Log($"{Registers.PC:X4}\t");
+            Program.Log($"{Mmu.ReadByte(Registers.PC):X2} [{Mmu.ReadByte(Registers.PC + 1):X2} {Mmu.ReadByte(Registers.PC + 2):X2}] \t");
             Op[op]();
         }
 
         void NOP()
         {
-            Console.WriteLine("NOP");
+            Program.LogLine("NOP");
             Registers.PC++;
             Registers.M += 1;
         }
@@ -165,9 +197,9 @@ namespace GameBoy
         byte LDd8(string name)
         {
             //LD C,d8
-            //2  82  8
+            //2  8
             var data = Mmu.ReadByte(Registers.PC + 1);
-            Console.WriteLine($"LD {name}, d8(${data:X1})");
+            Program.LogLine($"LD {name}, d8(${data:X1})");
 
             Registers.PC += 2;
             Registers.M += 2;
@@ -178,7 +210,7 @@ namespace GameBoy
         ushort LDd16(string name)
         {
             var data = Mmu.ReadWord(Registers.PC + 1);
-            Console.WriteLine($"LD {name}, d16(${data:X2})");
+            Program.LogLine($"LD {name}, d16(${data:X2})");
 
             Registers.PC += 3;
             Registers.M += 3;
@@ -187,7 +219,7 @@ namespace GameBoy
 
         void XOR_A(byte input, string name)
         {
-            Console.WriteLine($"XOR {name}, ${input:X2}");
+            Program.LogLine($"XOR {name}, ${input:X2}");
 
             Registers.A ^= input;
             Registers.PC += 1;
@@ -202,20 +234,26 @@ namespace GameBoy
             Registers.M += 3;
         }
 
-        public void JRccnn(bool value, byte nn)
+        public void JRccnn(bool value, string name, byte nn)
         {
-            Console.WriteLine($"JR cc({value.ToString()}) nn{nn}");
+            Program.LogLine($"JR {name}({value.ToString()}), {(sbyte)nn}");
 
             if (value)
             {
-                Registers.PC += nn;
+                if (Registers.PC + (sbyte)nn < 0)
+                {
+                    throw new InvalidOperationException($"Instruction JR, jump relative cannot move Program Counter below 0. PC={Registers.PC}, Offset={(sbyte)nn}");
+                }
+
+                Registers.PC = (ushort)(Registers.PC + (sbyte)nn);
                 Registers.M += 1;
             }
             else
             {
-                Registers.PC += 2;
+                var foo = false;
             }
 
+            Registers.PC += 2;
             Registers.M += 2;
         }
 
@@ -226,12 +264,11 @@ namespace GameBoy
                 throw new ArgumentOutOfRangeException("Bit to test must be between 0-7");
             }
 
-            Console.WriteLine($"BIT {bit}, {name}");
+            Program.LogLine($"BIT {bit}, {name}");
             var result = value & (1 << bit);
             Registers.FZ = result == 0;
             Registers.FN = false;
             Registers.FH = true;
-            Registers.M += 4;
         }
 
         public void BIT_b_addr(byte bit, byte value)

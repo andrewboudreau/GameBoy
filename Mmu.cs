@@ -2,6 +2,9 @@
 
 namespace GameBoy
 {
+    /// <summary>
+    /// GameBoy Memory Management Unit
+    /// </summary>
     public class Mmu
     {
         public byte[] Memory = new byte[0XFFFFF];
@@ -46,6 +49,10 @@ namespace GameBoy
         {
             Memory[address + 1] = (byte)((value & 0x0F) >> 8);
             Memory[address] = (byte)(value & 0x0F);
+        }
+        public void WriteWord(ushort address, int value)
+        {
+            WriteWord(address, (ushort)value);
         }
 
         public Span<byte> Read(Range range)

@@ -68,8 +68,8 @@ namespace GameBoy
 			}
 			set
 			{
-				H = (byte)((value & 0X00FF) >> 8);
-				L = (byte)(value & 0x0F);
+				H = (byte)((value & 0XFF00) >> 8);
+				L = (byte)(value & 0xFF);
 			}
 		}
 
@@ -124,7 +124,7 @@ namespace GameBoy
 		// Clock For Instructions
 		public uint M { get; set; }
 
-		public IEnumerator<(string Name, byte Value)> GetEnumerator()
+		public IEnumerator<(string Name, ushort Value)> GetEnumerator()
 		{
 			yield return ("A", A);
 			yield return ("B", B);
@@ -134,6 +134,10 @@ namespace GameBoy
 			yield return ("H", H);
 			yield return ("L", L);
 			yield return ("F", F);
-		}
+            yield return ("AF", AF);
+            yield return ("BC", BC);
+            yield return ("DE", DE);
+            yield return ("HL", HL);
+        }
 	}
 }
