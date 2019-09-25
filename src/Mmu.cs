@@ -57,7 +57,7 @@ namespace GameBoy
 
         public Span<byte> Read(Range range)
         {
-            return Memory[range].AsSpan();
+            return new Span<byte>(Memory)[range];
         }
     }
 }

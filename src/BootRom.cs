@@ -11,6 +11,8 @@ namespace GameBoy
 
         public static byte[] Bytes = StringToByteArray(HexString);
 
+        public static int SizeInBytes = HexString.Length / 2;
+
         public static byte[] StringToByteArray(string hex)
         {
             int NumberChars = hex.Length;
