@@ -23,6 +23,10 @@ namespace GameBoy
         {
             Memory[address] = value;
         }
+        public void WriteByte(int address, byte value)
+        {
+            WriteByte((ushort)address, value);
+        }
 
         public void WriteByte(ushort address, int value)
         {

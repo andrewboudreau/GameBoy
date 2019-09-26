@@ -7,7 +7,6 @@ namespace AndrewsWorld
 {
     class Program
     {
-        static long ticks = 0;
         static bool print = false;
 
         public static Action<string> Log = msg =>

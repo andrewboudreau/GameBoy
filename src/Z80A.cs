@@ -34,8 +34,8 @@ namespace GameBoy
 
     public partial class Z80A
     {
-        public Action<string> DebugOutput = Console.Write;
-        public Action<string> DebugOutputLine = Console.WriteLine;
+        public Action<string> DebugOutput = _ => { };
+        public Action<string> DebugOutputLine = _ => { };
 
         public Registers Registers = new Registers();
         public Clock Clock = new Clock();
@@ -44,6 +44,7 @@ namespace GameBoy
         public Z80A()
         {
             BootRom.Bytes.CopyTo(Mmu.Memory, 0);
+            BootRom.Logo.CopyTo(Mmu.Memory, 0x104);
 
             for (var i = 0; i < 16 * 16; i++)
             {
@@ -51,9 +52,24 @@ namespace GameBoy
                 CB[i] = NotImplemented;
             }
 
+            Op[0xCB] = () => PerfixCB();
+
             Op[0x00] = NOP;
             Op[0x02] = LDBCmA;
-            Op[0xCB] = () => PerfixCB();
+
+            Op[0x3C] = () => Registers.A = Increment(Registers.A, "A");
+            Op[0x04] = () => Registers.B = Increment(Registers.B, "B");
+            Op[0x0C] = () => Registers.C = Increment(Registers.C, "C");
+            Op[0x14] = () => Registers.D = Increment(Registers.D, "D");
+            Op[0x1C] = () => Registers.E = Increment(Registers.E, "E");
+            Op[0x24] = () => Registers.H = Increment(Registers.H, "H");
+            Op[0x2C] = () => Registers.L = Increment(Registers.L, "L");
+            Op[0x34] = () =>
+            {
+                Mmu.WriteByte(Registers.HL, Increment(Mmu.ReadByte(Registers.HL), "(HL)"));
+                Registers.M += 8 / 4;
+            };
+
             Op[0x01] = () => Registers.BC = LDd16("BC");
             Op[0x11] = () => Registers.DE = LDd16("DE");
             Op[0x21] = () => Registers.HL = LDd16("HL");
@@ -72,11 +88,13 @@ namespace GameBoy
             Op[0x3E] = () => Registers.A = LDd8("A");
 
             //LD (C),A
+            //2  8
             Op[0xE2] = () =>
             {
-                DebugOutputLine($"LD (C), A#{Registers.A}");
-                Mmu.WriteByte(Registers.C, Registers.A);
-                Registers.PC += 2;
+                //LD($FF00 + C),A
+                DebugOutputLine($"LD ($FF00 + C)[{0xFF00 + Registers.C:X4}], A #{Registers.A:X2} {Registers.A}");
+                Mmu.WriteByte((ushort)(0xFF00 + Registers.C), Registers.A);
+                Registers.PC += 1;
                 Registers.M += 2;
             };
 
@@ -146,12 +164,15 @@ namespace GameBoy
                 Registers.M += 24 / 4;
             };
 
-            //LDH (a8),A
+            //LD($FF00 + C),A
             Op[0xE0] = () =>
             {
-                DebugOutputLine("LDH (a8), A");
+                var n = Mmu.ReadByte(Registers.PC + 1);
+                DebugOutputLine($"LD ($FF00 + n)[{0xFF00 + n:X4}], A #{Registers.A:X2} {Registers.A}");
+                Mmu.WriteByte(0xFF00 + n, Registers.A);
+
                 Registers.PC += 2;
-                Registers.M += 3;
+                Registers.M += 12 / 4;
             };
 
             CB[0x7c] = () => BIT_br(7, Registers.H, "H");
@@ -165,7 +186,7 @@ namespace GameBoy
             var op = Mmu.ReadByte(Registers.PC);
             DebugOutput($"{Registers.PC:X4}\t");
             DebugOutput($"{Mmu.ReadByte(Registers.PC):X2} [{Mmu.ReadByte(Registers.PC + 1):X2} {Mmu.ReadByte(Registers.PC + 2):X2}] \t");
-            
+
             Op[op]();
             Clock.Step(Registers.M);
             Registers.M = 0;
@@ -184,7 +205,7 @@ namespace GameBoy
             throw new NotImplementedException($"{debug} PC={Registers.PC:X4}");
 
         }
- 
+
         void NOP()
         {
             DebugOutputLine("NOP");

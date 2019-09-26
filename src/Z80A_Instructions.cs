@@ -46,16 +46,37 @@ namespace GameBoy
         void LDBCmA()
         {
             throw new NotImplementedException("Doesn't increment PC");
-            Registers.B = Mmu.ReadByte((ushort)(Registers.PC + 1));
-            Registers.C = Mmu.ReadByte((ushort)(Registers.PC + 2));
-            Registers.M += 3;
+            ////Registers.B = Mmu.ReadByte((ushort)(Registers.PC + 1));
+            ////Registers.C = Mmu.ReadByte((ushort)(Registers.PC + 2));
+            ////Registers.M += 3;
         }
 
-        public void JRccnn(bool value, string name, byte nn)
+        public byte Increment(byte value, string name)
         {
-            DebugOutputLine($"JR {name}({value.ToString()}), {(sbyte)nn}");
+            // INC C 
+            // 1  4, 
+            // Z - Set if result is zero.
+            // N - Reset.
+            // H - Set if carry from bit 3.
+            // C - Not affected.
 
-            if (value)
+            DebugOutputLine($"INC {name} #{value:X2}+1 {value}");
+
+            Registers.FH = (value & 0x0F) == 0x0F;
+            Registers.FZ = Registers.C == 0;
+            Registers.FN = false;
+
+            Registers.PC += 1;
+            Registers.M += 4 / 4;
+
+            return (byte)(value + 1);
+        }
+
+        public void JRccnn(bool test, string name, byte nn)
+        {
+            DebugOutputLine($"JR {name}({test.ToString()}), {(sbyte)nn}");
+
+            if (test)
             {
                 if (Registers.PC + (sbyte)nn < 0)
                 {
@@ -64,10 +85,6 @@ namespace GameBoy
 
                 Registers.PC = (ushort)(Registers.PC + (sbyte)nn);
                 Registers.M += 1;
-            }
-            else
-            {
-                var foo = false;
             }
 
             Registers.PC += 2;
@@ -91,8 +108,8 @@ namespace GameBoy
         public void BIT_b_addr(byte bit, byte value)
         {
             throw new NotImplementedException("figure out how to render addr correctly.");
-            BIT_br(bit, value, "addr");
-            Registers.M += 4;
+            ////BIT_br(bit, value, "addr");
+            ////Registers.M += 4;
         }
 
         public byte SET_br(byte bit, byte value)

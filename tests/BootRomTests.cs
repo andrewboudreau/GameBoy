@@ -1,5 +1,8 @@
 using GameBoy.Debugger;
+using GameBoy.Test.Extensions;
 using NUnit.Framework;
+using System;
+using System.Diagnostics;
 
 namespace GameBoy.Test
 {
@@ -7,6 +10,7 @@ namespace GameBoy.Test
     /// <summary>
     /// Based on `docs\Gameboy_BootRom_Explained.html`.
     /// </summary>
+    [TestFixture]
     public class BootRomTests
     {
         [SetUp]
@@ -83,10 +87,53 @@ namespace GameBoy.Test
         [Test]
         public void Step3_InitializeAudio()
         {
-            var cpu = new Z80A();
-            cpu.StepUntil(r => r.PC == 0x14);
+            /*
+                The following fragment makes some writes to the audio device; suffice for now that 
+                it turns on the device and writes to some of the devices’ registers:
 
-            cpu.Step();
+                0x000C – LD HL, $0xFF26 # load 0xFF26 to HL
+                0x000F – LD C, $0x11 # load 0x11 to C
+                0x0011 – LD A, $0x80 # load 0x80 to A
+                0x0013 – LD (HL-), A # load A to address pointed to by HL and Dec HL
+                0x0014 – LD ($0xFF00+C), A # load A to address 0xFF00+C (0xFF11)
+                0x0015 – INC C # increment C register
+                0x0016 – LD A, $0xF3 # load 0xF3 to A
+                0x0018 – LD ($0xFF00+C), A # load A to address 0xFF00+C (0xFF12)
+                0x0019 – LD (HL-), A # load A to address pointed to by HL and Dec HL
+                0x001A – LD A, $0x77 # load 0x77 to A
+                0x001C – LD (HL), A # load A to address pointed to by HL
+            */
+
+            var cpu = new Z80A();
+            cpu.StepUntil(r => r.PC == 0x14)
+                .StartOutput()
+                .StepUntil(r => r.PC == 0x1D);
+
+            Assert.That(cpu.Mmu.ReadByte(0xFF26) == 0x80);
+            Assert.That(cpu.Mmu.ReadByte(0xFF11) == 0x80);
+
+            Assert.That(cpu.Mmu.ReadByte(0xFF12) == 0xF3);
+            Assert.That(cpu.Mmu.ReadByte(0xFF25) == 0xF3);
+
+            Assert.That(cpu.Mmu.ReadByte(0xFF24) == 0x77);
+        }
+
+        [Test]
+        public void Step4_NintendoLogo()
+        {
+            var cpu = new Z80A();
+            cpu.StepUntil(r => r.PC >= 0x1D)
+                .StartOutput()
+                .StepUntil(r => r.PC >= 0x28);
+
+            // initialize the palette
+            Assert.That(cpu.Mmu.ReadByte(0xFF47), Is.EqualTo(0xFC));
+
+            // Pointer to Nintendo Logo
+            Assert.That(cpu.Registers.DE, Is.EqualTo(0x0104));
+
+            // Pointer to Video RAM
+            Assert.That(cpu.Registers.HL, Is.EqualTo(0x8010));
         }
     }
 }
