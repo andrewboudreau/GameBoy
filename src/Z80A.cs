@@ -115,14 +115,14 @@ namespace GameBoy
                 Registers.M += 2;
             };
 
-            Op[0x4F] = () =>
-            {
-                DebugOutputLine($"LD C, A #{Registers.A:X2} {Registers.A}");
-                NotImplemented();
-                //LD C, A
-                //1  4
-
-            };
+            // LD n,A
+            Op[0x7F] = () => Registers.A = LDnA("A");
+            Op[0x47] = () => Registers.B = LDnA("B");
+            Op[0x4F] = () => Registers.C = LDnA("C");
+            Op[0x57] = () => Registers.D = LDnA("D");
+            Op[0x5F] = () => Registers.E = LDnA("E"); 
+            Op[0x67] = () => Registers.H = LDnA("H");
+            Op[0x6F] = () => Registers.L = LDnA("L");
 
             //LD (HL),A
             Op[0x77] = () =>

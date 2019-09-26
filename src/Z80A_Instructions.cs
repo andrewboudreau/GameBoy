@@ -15,22 +15,31 @@ namespace GameBoy
         {
             //LD C,d8
             //2  8
-            var data = Mmu.ReadByte(Registers.PC + 1);
-            DebugOutputLine($"LD {name}, d8(${data:X1})");
+            var value = Mmu.ReadByte(Registers.PC + 1);
+            DebugOutputLine($"LD {name}, ${value:X1}");
 
             Registers.PC += 2;
             Registers.M += 2;
-            return data;
+            return value;
         }
 
         ushort LDd16(string name)
         {
-            var data = Mmu.ReadWord(Registers.PC + 1);
-            DebugOutputLine($"LD {name}, d16(${data:X2})");
+            var value = Mmu.ReadWord(Registers.PC + 1);
+            DebugOutputLine($"LD {name}, ${value:X2} {value}");
 
             Registers.PC += 3;
             Registers.M += 3;
-            return data;
+            return value;
+        }
+
+        byte LDnA(string name)
+        {
+            DebugOutputLine($"LD {name}, A #{Registers.A:X2} {Registers.A}");
+
+            Registers.PC += 1;
+            Registers.M += 4 / 4;
+            return Registers.A;
         }
 
         void XOR_A(byte input, string name)
