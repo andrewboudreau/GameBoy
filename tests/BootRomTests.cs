@@ -135,5 +135,22 @@ namespace GameBoy.Test
             // Pointer to Video RAM
             Assert.That(cpu.Registers.HL, Is.EqualTo(0x8010));
         }
+
+        [Test]
+        public void Step5_DecompressIntoVram()
+        {
+            var cpu = new Z80A();
+            cpu.StepUntil(r => r.PC >= 0x1D)
+                .StartOutput()
+                .StepUntil(r => r.PC >= 0x9b);
+            
+            cpu.Step();
+            cpu.Step(); 
+            cpu.Step();
+
+            Assert.That(cpu.Mmu.ReadByte(0xFF47), Is.EqualTo(0xFC));
+            Assert.That(cpu.Registers.DE, Is.EqualTo(0x0104));
+            Assert.That(cpu.Registers.HL, Is.EqualTo(0x8010));
+        }
     }
 }

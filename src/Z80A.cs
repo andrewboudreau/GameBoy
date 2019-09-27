@@ -75,7 +75,6 @@ namespace GameBoy
             Op[0x21] = () => Registers.HL = LDd16("HL");
             Op[0x31] = () => Registers.SP = LDd16("SP");
 
-            Op[0x0E] = () => Registers.C = LDd8("C");
             Op[0x1A] = () =>
             {
                 // LD A, (DE)
@@ -85,13 +84,23 @@ namespace GameBoy
                 Registers.M += 2;
             };
 
+            Op[0x06] = () => Registers.B = LDd8("B");
+            Op[0x0E] = () => Registers.C = LDd8("C");
+            Op[0x16] = () => Registers.D = LDd8("D");
+            Op[0x1E] = () => Registers.E = LDd8("E");
+            Op[0x36] = () => NotImplemented();
             Op[0x3E] = () => Registers.A = LDd8("A");
 
-            //LD (C),A
-            //2  8
+            Op[0x17] = () =>
+             {
+                 NotImplemented();
+                 //RLA
+                 //1 4 0 0 0 C]
+             };
+
+            //LD($FF00 + C),A
             Op[0xE2] = () =>
             {
-                //LD($FF00 + C),A
                 DebugOutputLine($"LD ($FF00 + C)[{0xFF00 + Registers.C:X4}], A #{Registers.A:X2} {Registers.A}");
                 Mmu.WriteByte((ushort)(0xFF00 + Registers.C), Registers.A);
                 Registers.PC += 1;
@@ -120,7 +129,7 @@ namespace GameBoy
             Op[0x47] = () => Registers.B = LDnA("B");
             Op[0x4F] = () => Registers.C = LDnA("C");
             Op[0x57] = () => Registers.D = LDnA("D");
-            Op[0x5F] = () => Registers.E = LDnA("E"); 
+            Op[0x5F] = () => Registers.E = LDnA("E");
             Op[0x67] = () => Registers.H = LDnA("H");
             Op[0x6F] = () => Registers.L = LDnA("L");
 
@@ -153,9 +162,33 @@ namespace GameBoy
             Op[0xAE] = () => XOR_A(Mmu.ReadByte(Registers.HL), "(HL)");
             Op[0xAF] = () => XOR_A(Registers.A, "A");
 
+            // POP BC, 1 12
+            Op[0xC1] = () =>
+            {
+                DebugOutputLine($"POP BC #{Mmu.ReadWord(Registers.SP):X4} SP={Registers.SP:X4}");
+
+                Registers.BC = Mmu.ReadWord(Registers.SP);
+                Registers.SP += 2;
+
+                Registers.PC += 1;
+                Registers.M += 12 / 4;
+            };
+
+            // PUSH BC , 1 16
+            Op[0xC5] = () =>
+            {
+                DebugOutputLine($"PUSH BC #{Registers.BC:X4} SP={Registers.SP - 2:X4}");
+
+                Registers.SP -= 2;
+                Mmu.WriteWord(Registers.SP, Registers.BC);
+
+                Registers.PC += 1;
+                Registers.M += 16 / 4;
+            };
+
+            //CALL a16
             Op[0xCD] = () =>
             {
-                //CALL a16
                 DebugOutputLine($"CALL #{Mmu.ReadWord(Registers.PC + 1):X4} push({Registers.PC + 3:X4})");
 
                 Registers.SP -= 2;
@@ -176,6 +209,10 @@ namespace GameBoy
             };
 
             CB[0x7c] = () => BIT_br(7, Registers.H, "H");
+
+            // Rotate Left
+            CB[0x11] = () => Registers.C = RL(Registers.C, "C");
+            CB[0x17] = () => Registers.A = RL(Registers.A, "A");
         }
 
         public readonly Action[] Op = new Action[256];
