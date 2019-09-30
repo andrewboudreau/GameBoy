@@ -63,20 +63,61 @@ namespace GameBoy
             // C - Not affected.
 
             DebugOutputLine($"INC {name} #{value:X2}+1 {value}");
+            var new_value = (byte)(value + 1);
+
+            Registers.FZ = new_value == 0;
+            Registers.FN = false;
+            /*
+              Op           Before         | After
+                bbbb_1111     1110_1111   |   1111_0000
+              & 0000_1111   & 0000_1111   | & 0000_1111
+              ===========   ===========   | ===========
+                0000_1111     0000_1111   |   0000_0000
+            */
 
             Registers.FH = (value & 0x0F) == 0x0F;
-            Registers.FZ = Registers.C == 0;
-            Registers.FN = false;
+            /// Registers.FC = Registers.FC;
 
             Registers.PC += 1;
             Registers.M += 4 / 4;
 
-            return (byte)(value + 1);
+            return new_value;
+        }
+
+        public byte Decrement(byte value, string name)
+        {
+            // DEC C 
+            // 1  4, 
+            // Z - Set if reselt is zero.
+            // N - Set.
+            // H - Set if no borrow from bit 4
+            // C - Not affected.
+
+            DebugOutputLine($"DEC {name} #{value:X2}-1 {value}");
+            var new_value = (byte)(value - 1);
+
+            Registers.FZ = new_value == 0;
+            Registers.FN = true;
+
+            /*
+               Op           Before         | After
+                 bbbb_1111     1110_0000   |   1101_1111
+               & 0000_1111   & 0000_1111   | & 0000_1111
+               ===========   ===========   | ===========
+                 0000_0000     0000_0000   |   0000_1111
+             */
+            Registers.FH = (value & 0x0F) == 0;
+            /// Registers.FC = Registers.FC;
+
+            Registers.PC += 1;
+            Registers.M += 4 / 4;
+
+            return new_value;
         }
 
         public void JRccnn(bool test, string name, byte nn)
         {
-            DebugOutputLine($"JR {name}({test.ToString()}), {(sbyte)nn}");
+            DebugOutputLine($"JR {name}={test.ToString()}, {(sbyte)nn}");
 
             if (test)
             {

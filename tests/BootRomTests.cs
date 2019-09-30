@@ -134,23 +134,35 @@ namespace GameBoy.Test
 
             // Pointer to Video RAM
             Assert.That(cpu.Registers.HL, Is.EqualTo(0x8010));
+
+            // Other register values
+            Assert.That(cpu.Registers.AF, Is.EqualTo(0xCE00));
+            Assert.That(cpu.Registers.BC, Is.EqualTo(0x0012));
+            Assert.That(cpu.Registers.SP, Is.EqualTo(0xFFFE));
         }
 
         [Test]
-        public void Step5_DecompressIntoVram()
+        public void Step5_DecompressIntoVRam_FirstLoop0x95()
         {
             var cpu = new Z80A();
             cpu.StepUntil(r => r.PC >= 0x1D)
                 .StartOutput()
-                .StepUntil(r => r.PC >= 0x9b);
-            
-            cpu.Step();
-            cpu.Step(); 
-            cpu.Step();
+                .StepUntil(r => r.PC == 0xA1);
 
             Assert.That(cpu.Mmu.ReadByte(0xFF47), Is.EqualTo(0xFC));
-            Assert.That(cpu.Registers.DE, Is.EqualTo(0x0104));
+
+            Assert.That(cpu.Registers.BC, Is.EqualTo(0x039D));
+            Assert.That(cpu.Registers.DE, Is.EqualTo(0x0106)); // Nintnedo Logo Data Pointer
             Assert.That(cpu.Registers.HL, Is.EqualTo(0x8010));
+
+            // Flags
+            Assert.That(cpu.Registers.FZ, Is.False);
+            Assert.That(cpu.Registers.FN, Is.True);
+            Assert.That(cpu.Registers.FH, Is.False);
+            Assert.That(cpu.Registers.FC, Is.True);
+
+            Assert.That(cpu.Registers.AF, Is.EqualTo(0x3B50));
+            Assert.That(cpu.Registers.SP, Is.EqualTo(0xFFFC));
         }
     }
 }

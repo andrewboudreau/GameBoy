@@ -57,6 +57,16 @@ namespace GameBoy
             Op[0x00] = NOP;
             Op[0x02] = LDBCmA;
 
+            Op[0x05] = () =>
+            {
+                // DEC B
+                // 1 4
+                // Z 1 H -
+
+                Registers.PC += 1;
+                Registers.M += 2;
+            };
+
             Op[0x3C] = () => Registers.A = Increment(Registers.A, "A");
             Op[0x04] = () => Registers.B = Increment(Registers.B, "B");
             Op[0x0C] = () => Registers.C = Increment(Registers.C, "C");
@@ -67,6 +77,19 @@ namespace GameBoy
             Op[0x34] = () =>
             {
                 Mmu.WriteByte(Registers.HL, Increment(Mmu.ReadByte(Registers.HL), "(HL)"));
+                Registers.M += 8 / 4;
+            };
+
+            Op[0x3D] = () => Registers.A = Decrement(Registers.A, "A");
+            Op[0x05] = () => Registers.B = Decrement(Registers.B, "B");
+            Op[0x0D] = () => Registers.C = Decrement(Registers.C, "C");
+            Op[0x15] = () => Registers.D = Decrement(Registers.D, "D");
+            Op[0x1D] = () => Registers.E = Decrement(Registers.E, "E");
+            Op[0x25] = () => Registers.H = Decrement(Registers.H, "H");
+            Op[0x2D] = () => Registers.L = Decrement(Registers.L, "L");
+            Op[0x35] = () =>
+            {
+                Mmu.WriteByte(Registers.HL, Decrement(Mmu.ReadByte(Registers.HL), "(HL)"));
                 Registers.M += 8 / 4;
             };
 
@@ -91,12 +114,6 @@ namespace GameBoy
             Op[0x36] = () => NotImplemented();
             Op[0x3E] = () => Registers.A = LDd8("A");
 
-            Op[0x17] = () =>
-             {
-                 NotImplemented();
-                 //RLA
-                 //1 4 0 0 0 C]
-             };
 
             //LD($FF00 + C),A
             Op[0xE2] = () =>
@@ -111,8 +128,8 @@ namespace GameBoy
             // JR cc,n
             Op[0x20] = () => { JRccnn(!Registers.FZ, "NZ", Mmu.ReadByte(Registers.PC + 1)); };
             Op[0x28] = () => { JRccnn(Registers.FZ, "Z", Mmu.ReadByte(Registers.PC + 1)); };
-            Op[0x30] = () => { JRccnn(Registers.FC, "NC", Mmu.ReadByte(Registers.PC + 1)); };
-            Op[0x38] = () => { JRccnn(!Registers.FC, "C", Mmu.ReadByte(Registers.PC + 1)); };
+            Op[0x30] = () => { JRccnn(!Registers.FC, "NC", Mmu.ReadByte(Registers.PC + 1)); };
+            Op[0x38] = () => { JRccnn(Registers.FC, "C", Mmu.ReadByte(Registers.PC + 1)); };
 
             // LD (HL-),A
             Op[0x32] = () =>
@@ -207,12 +224,29 @@ namespace GameBoy
                 Registers.PC += 2;
                 Registers.M += 12 / 4;
             };
-
             CB[0x7c] = () => BIT_br(7, Registers.H, "H");
 
             // Rotate Left
             CB[0x11] = () => Registers.C = RL(Registers.C, "C");
             CB[0x17] = () => Registers.A = RL(Registers.A, "A");
+
+            //RL A
+            Op[0x17] = () =>
+            {
+                //RLA
+                DebugOutputLine($"RL A #{Registers.A:X2} [{(Registers.FC ? "1" : "0")}] {Convert.ToString(Registers.A, 2)} ");
+
+                var carry = Registers.FC ? 1 : 0;
+                Registers.FC = (Registers.A & 0x80) > 0;
+                Registers.FH = false;
+                Registers.FN = false;
+                Registers.FZ = false;
+
+                Registers.M += 4 / 4;
+                Registers.PC += 1;
+
+                Registers.A = (byte)((Registers.A << 1) + carry);
+            };
         }
 
         public readonly Action[] Op = new Action[256];

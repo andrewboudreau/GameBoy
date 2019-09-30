@@ -51,9 +51,10 @@ namespace GameBoy
 
         public void WriteWord(ushort address, ushort value)
         {
-            Memory[address + 1] = (byte)((value & 0x0F) >> 8);
-            Memory[address] = (byte)(value & 0x0F);
+            Memory[address + 1] = (byte)((value & 0xFF00) >> 8);
+            Memory[address] = (byte)(value & 0x00FF);
         }
+
         public void WriteWord(ushort address, int value)
         {
             WriteWord(address, (ushort)value);
