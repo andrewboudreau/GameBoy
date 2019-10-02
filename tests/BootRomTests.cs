@@ -134,7 +134,7 @@ namespace GameBoy.Test
         }
 
         [Test]
-        public void Step5_DecompressIntoVRam_To0x0095()
+        public void Step5a_DecompressIntoVRam_To0x0095()
         {
             var cpu = new Z80A();
             cpu.StepUntil(r => r.PC == 0x1D)
@@ -158,7 +158,7 @@ namespace GameBoy.Test
         }
 
         [Test]
-        public void Step5_DecompressIntoVRam_SingleLoopOfSubroutine_0x95()
+        public void Step5b_DecompressIntoVRam_SingleLoopOfSubroutine_0x95()
         {
             var cpu = new Z80A();
             cpu.StepUntil(r => r.PC == 0x1D)
@@ -182,7 +182,7 @@ namespace GameBoy.Test
         }
 
         [Test]
-        public void Step5_DecompressIntoVRam_CompleteLoopInSubroutine_0x95()
+        public void Step5c_DecompressIntoVRam_CompleteLoopInSubroutine_0x95()
         {
             var cpu = new Z80A();
             cpu.StepUntil(r => r.PC == 0x1D)
@@ -204,7 +204,7 @@ namespace GameBoy.Test
         }
 
         [Test]
-        public void Step5_DecompressIntoVRam_ReturnSubroutine_0x95()
+        public void Step5d_DecompressIntoVRam_ReturnSubroutine_0x95()
         {
             var cpu = new Z80A();
             cpu.StepUntil(r => r.PC == 0x1D)
@@ -222,6 +222,50 @@ namespace GameBoy.Test
             Assert.That(cpu.Registers.FC, Is.False);
 
             Assert.That(cpu.Registers.AF, Is.EqualTo(0xF0C0));
+            Assert.That(cpu.Registers.SP, Is.EqualTo(0xFFFE));
+        }
+
+        [Test]
+        public void Step5e_DecompressIntoVRam_ReturnSubroutine_0x96()
+        {
+            var cpu = new Z80A();
+            cpu.StepUntil(r => r.PC == 0x1D)
+                .StartOutput()
+                .StepUntil(r => r.PC == 0x2E);
+
+            Assert.That(cpu.Registers.BC, Is.EqualTo(0x00BC));
+            Assert.That(cpu.Registers.DE, Is.EqualTo(0x0104));
+            Assert.That(cpu.Registers.HL, Is.EqualTo(0x8018));
+
+            // Flags
+            Assert.That(cpu.Registers.FZ, Is.True);
+            Assert.That(cpu.Registers.FN, Is.True);
+            Assert.That(cpu.Registers.FH, Is.False);
+            Assert.That(cpu.Registers.FC, Is.False);
+
+            Assert.That(cpu.Registers.AF, Is.EqualTo(0xFCC0));
+            Assert.That(cpu.Registers.SP, Is.EqualTo(0xFFFE));
+        }
+
+        [Test]
+        public void Step6_ScrollLogo()
+        {
+            var cpu = new Z80A();
+            cpu.StepUntil(r => r.PC == 0x34)
+                .StartOutput()
+                .StepUntil(r => r.PC == 0x40);
+
+            Assert.That(cpu.Registers.BC, Is.EqualTo(0x0073));
+            Assert.That(cpu.Registers.DE, Is.EqualTo(0x00E0));
+            Assert.That(cpu.Registers.HL, Is.EqualTo(0x81A0));
+
+            // Flags
+            Assert.That(cpu.Registers.FZ, Is.True);
+            Assert.That(cpu.Registers.FN, Is.True);
+            Assert.That(cpu.Registers.FH, Is.False);
+            Assert.That(cpu.Registers.FC, Is.False);
+
+            Assert.That(cpu.Registers.AF, Is.EqualTo(0x3CC0));
             Assert.That(cpu.Registers.SP, Is.EqualTo(0xFFFE));
         }
     }

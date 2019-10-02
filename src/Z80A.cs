@@ -188,6 +188,12 @@ namespace GameBoy
             Op[0xAE] = () => XOR_A(Mmu.ReadByte(Registers.HL), "(HL)");
             Op[0xAF] = () => XOR_A(Registers.A, "A");
 
+            // Increment 16-bit Register
+            Op[0x03] = () => Increment_rr(Registers.BC, "BC");
+            Op[0x13] = () => Increment_rr(Registers.DE, "DE");
+            Op[0x23] = () => Increment_rr(Registers.HL, "HL");
+            Op[0x33] = () => Increment_rr(Registers.SP, "SP");
+
             // POP BC, 1 12
             Op[0xC1] = () =>
             {

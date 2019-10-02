@@ -115,6 +115,17 @@ namespace GameBoy
             return new_value;
         }
 
+        public ushort Increment_rr(ushort value, string name)
+        {
+            DebugOutputLine($"INC {name} #{value:X4}+1 {value+1}");
+            var new_value = (ushort)(value + 1);
+
+            Registers.PC += 1;
+            Registers.M += 8 / 4;
+
+            return new_value;
+        }
+
         public void JRccnn(bool test, string name, byte nn)
         {
             DebugOutputLine($"JR {name}={test.ToString()}, {(sbyte)nn}");
