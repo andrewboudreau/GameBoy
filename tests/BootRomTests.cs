@@ -1,23 +1,15 @@
 using GameBoy.Debugger;
 using GameBoy.Test.Extensions;
 using NUnit.Framework;
-using System;
-using System.Diagnostics;
 
 namespace GameBoy.Test
 {
-
     /// <summary>
     /// Based on `docs\Gameboy_BootRom_Explained.html`.
     /// </summary>
     [TestFixture]
     public class BootRomTests
     {
-        [SetUp]
-        public void Setup()
-        {
-        }
-
         [Test]
         public void Step1_InitializeStackPointTo_0xFFFE()
         {
@@ -119,12 +111,12 @@ namespace GameBoy.Test
         }
 
         [Test]
-        public void Step4_NintendoLogo()
+        public void Step4_NintendoLogoPointer()
         {
             var cpu = new Z80A();
-            cpu.StepUntil(r => r.PC >= 0x1D)
+            cpu.StepUntil(r => r.PC == 0x1D)
                 .StartOutput()
-                .StepUntil(r => r.PC >= 0x28);
+                .StepUntil(r => r.PC == 0x28);
 
             // initialize the palette
             Assert.That(cpu.Mmu.ReadByte(0xFF47), Is.EqualTo(0xFC));
@@ -142,17 +134,17 @@ namespace GameBoy.Test
         }
 
         [Test]
-        public void Step5_DecompressIntoVRam_FirstLoop0x95()
+        public void Step5_DecompressIntoVRam_To0x0095()
         {
             var cpu = new Z80A();
-            cpu.StepUntil(r => r.PC >= 0x1D)
+            cpu.StepUntil(r => r.PC == 0x1D)
                 .StartOutput()
                 .StepUntil(r => r.PC == 0xA1);
 
             Assert.That(cpu.Mmu.ReadByte(0xFF47), Is.EqualTo(0xFC));
 
             Assert.That(cpu.Registers.BC, Is.EqualTo(0x039D));
-            Assert.That(cpu.Registers.DE, Is.EqualTo(0x0106)); // Nintnedo Logo Data Pointer
+            Assert.That(cpu.Registers.DE, Is.EqualTo(0x0104)); // Nintnedo Logo Data Pointer
             Assert.That(cpu.Registers.HL, Is.EqualTo(0x8010));
 
             // Flags
@@ -163,6 +155,74 @@ namespace GameBoy.Test
 
             Assert.That(cpu.Registers.AF, Is.EqualTo(0x3B50));
             Assert.That(cpu.Registers.SP, Is.EqualTo(0xFFFC));
+        }
+
+        [Test]
+        public void Step5_DecompressIntoVRam_SingleLoopOfSubroutine_0x95()
+        {
+            var cpu = new Z80A();
+            cpu.StepUntil(r => r.PC == 0x1D)
+                .StartOutput()
+                .StepUntil(r => r.PC == 0xA1);
+
+            Assert.That(cpu.Mmu.ReadByte(0xFF47), Is.EqualTo(0xFC));
+
+            Assert.That(cpu.Registers.BC, Is.EqualTo(0x039D));
+            Assert.That(cpu.Registers.DE, Is.EqualTo(0x0104));
+            Assert.That(cpu.Registers.HL, Is.EqualTo(0x8010));
+
+            // Flags
+            Assert.That(cpu.Registers.FZ, Is.False);
+            Assert.That(cpu.Registers.FN, Is.True);
+            Assert.That(cpu.Registers.FH, Is.False);
+            Assert.That(cpu.Registers.FC, Is.True);
+
+            Assert.That(cpu.Registers.AF, Is.EqualTo(0x3B50));
+            Assert.That(cpu.Registers.SP, Is.EqualTo(0xFFFC));
+        }
+
+        [Test]
+        public void Step5_DecompressIntoVRam_CompleteLoopInSubroutine_0x95()
+        {
+            var cpu = new Z80A();
+            cpu.StepUntil(r => r.PC == 0x1D)
+                .StartOutput()
+                .StepUntil(r => r.PC == 0xA3);
+
+            Assert.That(cpu.Registers.BC, Is.EqualTo(0x00EB));
+            Assert.That(cpu.Registers.DE, Is.EqualTo(0x0104));
+            Assert.That(cpu.Registers.HL, Is.EqualTo(0x8010));
+
+            // Flags
+            Assert.That(cpu.Registers.FZ, Is.True);
+            Assert.That(cpu.Registers.FN, Is.True);
+            Assert.That(cpu.Registers.FH, Is.False);
+            Assert.That(cpu.Registers.FC, Is.False);
+
+            Assert.That(cpu.Registers.AF, Is.EqualTo(0xF0C0));
+            Assert.That(cpu.Registers.SP, Is.EqualTo(0xFFFC));
+        }
+
+        [Test]
+        public void Step5_DecompressIntoVRam_ReturnSubroutine_0x95()
+        {
+            var cpu = new Z80A();
+            cpu.StepUntil(r => r.PC == 0x1D)
+                .StartOutput()
+                .StepUntil(r => r.PC == 0x2B);
+
+            Assert.That(cpu.Registers.BC, Is.EqualTo(0x00EB));
+            Assert.That(cpu.Registers.DE, Is.EqualTo(0x0104));
+            Assert.That(cpu.Registers.HL, Is.EqualTo(0x8014));
+
+            // Flags
+            Assert.That(cpu.Registers.FZ, Is.True);
+            Assert.That(cpu.Registers.FN, Is.True);
+            Assert.That(cpu.Registers.FH, Is.False);
+            Assert.That(cpu.Registers.FC, Is.False);
+
+            Assert.That(cpu.Registers.AF, Is.EqualTo(0xF0C0));
+            Assert.That(cpu.Registers.SP, Is.EqualTo(0xFFFE));
         }
     }
 }

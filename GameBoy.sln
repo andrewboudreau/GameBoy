@@ -5,7 +5,7 @@ VisualStudioVersion = 16.0.29311.281
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GameBoy", "src\GameBoy.csproj", "{4E629370-850B-4915-AE10-E9A6CEA75952}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GameBoy.Test", "tests\GameBoy.Test.csproj", "{8662D555-6FBA-417B-967B-20D10368B784}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GameBoy.Test", "tests\GameBoy.Test.csproj", "{8662D555-6FBA-417B-967B-20D10368B784}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

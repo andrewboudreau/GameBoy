@@ -57,14 +57,23 @@ namespace GameBoy
             Op[0x00] = NOP;
             Op[0x02] = LDBCmA;
 
-            Op[0x05] = () =>
+            // LD (HL+), A
+            Op[0x22] = () =>
             {
-                // DEC B
-                // 1 4
-                // Z 1 H -
+                DebugOutputLine($"LD (HL+), A #{Registers.A:X2} {Registers.A}");
+                Mmu.WriteByte(Registers.HL, Registers.A);
+                Registers.HL += 2;
+                Registers.M += 8 / 4;
+                Registers.PC += 2;
+            };
 
-                Registers.PC += 1;
-                Registers.M += 2;
+            // RET
+            Op[0xC9] = () =>
+            {
+                DebugOutputLine($"RET #{Mmu.ReadWord(Registers.SP):X4}");
+                Registers.M += 8 / 4;
+                Registers.PC = Mmu.ReadWord(Registers.SP);
+                Registers.SP += 2;
             };
 
             Op[0x3C] = () => Registers.A = Increment(Registers.A, "A");
@@ -194,7 +203,7 @@ namespace GameBoy
             // PUSH BC , 1 16
             Op[0xC5] = () =>
             {
-                DebugOutputLine($"PUSH BC #{Registers.BC:X4} SP={Registers.SP - 2:X4}");
+                DebugOutputLine($"PUSH BC #{Registers.BC:X4} SP={Registers.SP:X4}");
 
                 Registers.SP -= 2;
                 Mmu.WriteWord(Registers.SP, Registers.BC);
@@ -224,6 +233,7 @@ namespace GameBoy
                 Registers.PC += 2;
                 Registers.M += 12 / 4;
             };
+
             CB[0x7c] = () => BIT_br(7, Registers.H, "H");
 
             // Rotate Left

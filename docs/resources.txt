@@ -1,4 +1,6 @@
-﻿http://www.z80.info/decoding.htm
+﻿https://github.com/gbdev/awesome-gbdev
+
+http://www.z80.info/decoding.htm
 http://gbdev.gg8.se/wiki/articles/CPU_Instruction_Set
 http://imrannazar.com/Gameboy-Z80-Opcode-Map
 http://imrannazar.com/GameBoy-Emulation-in-JavaScript:-The-CPU
